@@ -1,0 +1,19 @@
+# gp3 StorageClass for the EBS CSI driver.
+# EKS ships a default "gp2" StorageClass but NOT a "gp3" one. The monitoring
+# stack (lgtm-values.yaml) requests storageClassName: gp3 for both Prometheus
+# and Grafana, so without this their PVCs stay Pending forever.
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: gp3
+  annotations:
+    # Make gp3 the cluster default; demote gp2 manually if desired.
+    storageclass.kubernetes.io/is-default-class: "true"
+provisioner: ebs.csi.aws.com
+# Bind only once a consuming pod is scheduled, so the volume is created in the
+# same AZ as the node. Important on Karpenter where node AZ isn't known upfront.
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
+parameters:
+  type: gp3
+  encrypted: "true"

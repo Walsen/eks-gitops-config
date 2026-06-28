@@ -1,0 +1,39 @@
+# NodePool: what Karpenter is allowed to provision.
+# API group karpenter.sh/v1 matches the Karpenter 1.0.0 chart.
+apiVersion: karpenter.sh/v1
+kind: NodePool
+metadata:
+  name: default
+spec:
+  template:
+    spec:
+      requirements:
+        # Spot for cost savings (70-90%). NOTE: stateful workloads using
+        # ReadWriteOnce EBS volumes (e.g. Prometheus/Grafana in the monitoring
+        # stack) can get stuck Pending if a spot node is reclaimed and the
+        # replacement lands in a different AZ than the volume. If that becomes a
+        # problem, either add "on-demand" to the values below or run those
+        # workloads on a dedicated on-demand NodePool.
+        - key: "karpenter.sh/capacity-type"
+          operator: In
+          values: ["spot"]
+        - key: "kubernetes.io/arch"
+          operator: In
+          values: ["amd64"]
+        - key: "kubernetes.io/os"
+          operator: In
+          values: ["linux"]
+      # v1 requires group + kind + name (apiVersion alone is no longer valid).
+      nodeClassRef:
+        group: karpenter.k8s.aws
+        kind: EC2NodeClass
+        name: default
+      # Recycle nodes after 30 days to pick up AMI/security updates.
+      expireAfter: 720h
+  limits:
+    cpu: "100" # Max aggregate vCPU this NodePool will provision
+  disruption:
+    # v1 renamed WhenUnderutilized -> WhenEmptyOrUnderutilized. Combined with
+    # an empty NodePool this is what lets the cluster scale workload nodes to 0.
+    consolidationPolicy: WhenEmptyOrUnderutilized
+    consolidateAfter: 30s

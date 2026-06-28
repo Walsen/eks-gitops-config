@@ -1,0 +1,32 @@
+# Syncs the Karpenter NodePool + EC2NodeClass (karpenter/ directory).
+# Depends on the Karpenter CRDs, which are installed by the platform Terraform
+# (eks_blueprints_addons.enable_karpenter). sync-wave -1 + retry handles the
+# case where this is applied before the controller finishes installing.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: karpenter-nodepools
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  project: default
+  source:
+    repoURL: 'https://github.com/Walsen/eks-gitops-config.git'
+    targetRevision: main
+    path: karpenter
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: karpenter
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - SkipDryRunOnMissingResource=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 15s
+        factor: 2
+        maxDuration: 3m

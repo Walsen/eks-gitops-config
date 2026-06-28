@@ -1,0 +1,22 @@
+# Syncs the gp3 StorageClass (storage/ directory). sync-wave -2 so it exists
+# before the monitoring stack tries to create gp3-backed PVCs.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cluster-storage
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+spec:
+  project: default
+  source:
+    repoURL: 'https://github.com/Walsen/eks-gitops-config.git'
+    targetRevision: main
+    path: storage
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: kube-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

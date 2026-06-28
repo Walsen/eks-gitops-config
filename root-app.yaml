@@ -1,0 +1,23 @@
+# App-of-apps root. Apply this ONCE (kubectl apply -f root-app.yaml) after
+# ArgoCD is running. It then manages every child Application under applications/
+# (cluster-storage, karpenter-nodepools, lgtm-monitoring-stack), each of which
+# syncs its own directory in this repo. This is what actually gets the NodePool
+# and EC2NodeClass into the cluster via GitOps.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: root
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: 'https://github.com/Walsen/eks-gitops-config.git'
+    targetRevision: main
+    path: applications
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
