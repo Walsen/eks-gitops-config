@@ -1,0 +1,34 @@
+# Enterprise configurations for kube-prometheus-stack
+
+prometheus:
+  prometheusSpec:
+    # We require persistent storage so metrics survive pod restarts.
+    # This will trigger the AWS EBS CSI driver to provision a gp3 volume.
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: gp3
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 50Gi # Standard starting size for metrics retention
+    
+    # Scrape interval tuned for faster scaling response times
+    scrapeInterval: "15s"
+
+grafana:
+  # Setting a static password for training purposes.
+  # In production, this pulls from AWS Secrets Manager, Vault, or OIDC.
+  adminPassword: "Kur0EnterprisePassword123!"
+  
+  persistence:
+    enabled: true
+    storageClassName: gp3
+    accessModes: ["ReadWriteOnce"]
+    size: 20Gi
+
+  # We set this to true so Grafana automatically provisions the Prometheus datasource
+  sidecar:
+    datasources:
+      enabled: true
+      defaultDatasourceEnabled: true
