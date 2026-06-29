@@ -1,5 +1,14 @@
 # Enterprise configurations for kube-prometheus-stack
 
+# The prometheus-operator admission webhook ships as Helm pre/post-install Jobs
+# (kube-admission-create/patch). Under ArgoCD with Replace=true these hooks hang
+# the sync ("waiting for completion of hook ...kube-admission"). The webhook only
+# validates PrometheusRule/etc. CRs; disabling it is a safe simplification for
+# this cluster and lets ArgoCD sync cleanly (including the Loki datasource below).
+prometheusOperator:
+  admissionWebhooks:
+    enabled: false
+
 prometheus:
   prometheusSpec:
     # We require persistent storage so metrics survive pod restarts.
