@@ -1,0 +1,79 @@
+# Loki (logs) — single-binary mode, backed by S3 via Pod Identity.
+# - Helm release name = "loki" => namespace "loki" => service account "loki",
+#   which matches the Pod Identity association created in Phase 1
+#   (eks-platform/observability.tf). That association grants S3 access to the
+#   enterprise-eks-cluster-loki bucket, so no static credentials are needed.
+# - sync-wave 1: after the monitoring stack (Grafana) so the Loki datasource has
+#   a home.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: loki
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: default
+  source:
+    repoURL: https://grafana.github.io/helm-charts
+    chart: loki
+    targetRevision: 6.55.0
+    helm:
+      values: |
+        deploymentMode: SingleBinary
+        loki:
+          auth_enabled: false
+          commonConfig:
+            replication_factor: 1
+          # Loki 3.x requires an explicit schema; tsdb + v13 + s3 object store.
+          schemaConfig:
+            configs:
+              - from: "2024-04-01"
+                store: tsdb
+                object_store: s3
+                schema: v13
+                index:
+                  prefix: loki_index_
+                  period: 24h
+          storage:
+            type: s3
+            bucketNames:
+              chunks: enterprise-eks-cluster-loki-862307432587
+              ruler: enterprise-eks-cluster-loki-862307432587
+              admin: enterprise-eks-cluster-loki-862307432587
+            s3:
+              region: us-east-1
+          limits_config:
+            retention_period: 168h   # 7 days
+            volume_enabled: true
+        serviceAccount:
+          create: true
+          name: loki                 # must match the Pod Identity association
+        singleBinary:
+          replicas: 1
+          persistence:
+            enabled: true
+            storageClass: gp3
+            size: 10Gi
+        # Scalable-mode components are unused in SingleBinary mode.
+        backend: { replicas: 0 }
+        read: { replicas: 0 }
+        write: { replicas: 0 }
+        # Keep the footprint small for a learning cluster.
+        chunksCache: { enabled: false }
+        resultsCache: { enabled: false }
+        lokiCanary: { enabled: false }
+        test: { enabled: false }
+        minio: { enabled: false }     # we use real S3, not bundled MinIO
+        gateway:
+          enabled: true               # unified push/query endpoint (loki-gateway)
+          replicas: 1
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: loki
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

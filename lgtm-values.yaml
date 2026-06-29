@@ -32,3 +32,13 @@ grafana:
     datasources:
       enabled: true
       defaultDatasourceEnabled: true
+
+  # Register Loki (logs) as a datasource so you can query logs in Grafana and
+  # correlate them with metrics. Points at Loki's in-cluster gateway.
+  additionalDataSources:
+    - name: Loki
+      type: loki
+      access: proxy
+      url: http://loki-gateway.loki.svc.cluster.local
+      jsonData:
+        maxLines: 1000
