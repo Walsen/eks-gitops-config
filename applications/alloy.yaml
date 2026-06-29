@@ -15,8 +15,16 @@ spec:
     targetRevision: 1.10.0
     helm:
       values: |
+        # Single Deployment (not DaemonSet): this Alloy collects logs via the
+        # Kubernetes API (loki.source.kubernetes), which is cluster-wide. One
+        # instance therefore sees every pod's logs. Running it per-node (DaemonSet)
+        # would (a) duplicate every log stream and (b) hit the t3.medium ~17-pod
+        # density cap (the per-node pod left Pending). For production-scale logging,
+        # prefer a DaemonSet that tails node-local files (/var/log/pods) plus VPC CNI
+        # prefix delegation for pod density.
         controller:
-          type: daemonset
+          type: deployment
+          replicas: 1
         alloy:
           configMap:
             content: |-
