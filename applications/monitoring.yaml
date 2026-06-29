@@ -33,3 +33,8 @@ spec:
       selfHeal: true   # If someone manually edits the cluster, ArgoCD overwrites it back to Git state
     syncOptions:
       - CreateNamespace=true
+      # kube-prometheus-stack's Prometheus/Alertmanager CRDs are larger than the
+      # 256KB metadata.annotations limit that client-side apply imposes (it stores
+      # last-applied-configuration there). Server-side apply avoids that annotation,
+      # so the CRDs install and the Prometheus/Alertmanager kinds resolve.
+      - ServerSideApply=true
